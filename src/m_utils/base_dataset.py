@@ -32,6 +32,7 @@ class CustomDataset ( Dataset ):
         # exmaple path : 'datasets/panoptic/160224_haggling1/hdImgs/00_00'
         self.cam_list = CAM_LIST[cam_list_name]
         self.cam_num  = len(self.cam_list )
+        self.infos = [ [] for _ in self.cam_list]
         for cam_id, cam_name in enumerate(self.cam_list):
             sub_data_path = f'{abs_dataset_dir}/{seq_name}/hdImgs/{cam_name[0]:02}_{cam_name[1]:02}'
             for frame_id , file_name in enumerate(os.listdir(sub_data_path)):
