@@ -26,7 +26,7 @@ import torch
 from glob import glob
 import cv2
 from torch.utils.data import DataLoader
-from src.m_utils.base_dataset import BaseDataset, PreprocessedDataset
+from src.m_utils.base_dataset import BaseDataset, PreprocessedDataset, CustomDataset
 from src.models.estimate3d import MultiEstimator
 from src.m_utils.transformation import coco2shelf3D
 from src.m_utils.numeric import vectorize_distance
@@ -54,6 +54,7 @@ def evaluate(model, actor3D, range_, loader, is_info_dicts=False, dump_dir=None)
     check_result = np.zeros ( (len ( actor3D[0] ), len ( actor3D ), 10), dtype=np.int32 )
     accuracy_cnt = 0
     error_cnt = 0
+    poses3ds = []
     for idx, imgs in enumerate ( tqdm ( loader ) ):
         img_id = range_[idx]
         try:
@@ -71,6 +72,9 @@ def evaluate(model, actor3D, range_, loader, is_info_dicts=False, dump_dir=None)
         except Exception as e:
             logger.critical ( e )
             poses3d = False
+        poses3ds.append(poses3d)
+        
+    return poses3ds
 
         for pid in range ( len ( actor3D ) ):
             if actor3D[pid][img_id][0].shape == (1, 0) or actor3D[pid][img_id][0].shape == (0, 0):
@@ -152,6 +156,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser ()
     parser.add_argument ( '-d', nargs='+', dest='datasets', required=True, choices=['Shelf', 'Campus'] )
     parser.add_argument ( '-dumped', nargs='+', dest='dumped_dir', default=None )
+    parser.add_argument('--seq', type=str, help='A string argument')
+    parser.add_argument('--cam', type=str, help='A string argument')
     args = parser.parse_args ()
 
     test_model = MultiEstimator ( cfg=model_cfg )
@@ -168,6 +174,11 @@ if __name__ == '__main__':
             dataset_path = model_cfg.campus_path
             test_range = [i for i in range ( 350, 471 )] + [i for i in range ( 650, 751 )]
             gt_path = dataset_path
+            
+        elif dataset_name == 'panoptic':
+            dataset_path = 'dataset/panoptic'
+            seq = args.seq
+            cam = args.cam
 
         else:
             dataset_path = model_cfg.panoptic_ultimatum_path
@@ -177,17 +188,20 @@ if __name__ == '__main__':
         with open ( osp.join ( dataset_path, 'camera_parameter.pickle' ),
                     'rb' ) as f:
             camera_parameter = pickle.load ( f )
+        
+            
         if args.dumped_dir:
             test_dataset = PreprocessedDataset ( args.dumped_dir[dataset_idx])
             logger.info ( f"Using pre-processed datasets {args.dumped_dir[dataset_idx]} for quicker evaluation" )
             test_loader = DataLoader ( test_dataset, batch_size=1, pin_memory=True, num_workers=6, shuffle=False )
         else:
-            test_dataset = BaseDataset ( dataset_path, test_range )
+            test_dataset = BaseDataset ( dataset_path, test_range ) if dataset_name != 'panoptic' else CustomDataset ( dataset_path, seq ,cam )
             test_loader = DataLoader ( test_dataset, batch_size=1, pin_memory=True, num_workers=12, shuffle=False )
 
         actorsGT = scio.loadmat ( osp.join ( gt_path, 'actorsGT.mat' ) )
         test_actor3D = actorsGT['actor3D'][0]
         if dataset_name == 'Panoptic':
             test_actor3D /= 100  # mm->m
-        evaluate ( test_model, test_actor3D, test_range, test_loader, is_info_dicts=bool ( args.dumped_dir ),
+        poses3ds = evaluate ( test_model, test_actor3D, test_range, test_loader, is_info_dicts=bool ( args.dumped_dir ),
                    dump_dir=osp.join ( project_root, 'result' ) )
+        np.save (  f'logs/{dataset_name}_{seq}_{cam}_poses3ds.npy', poses3ds )
