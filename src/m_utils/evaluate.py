@@ -32,6 +32,19 @@ from src.m_utils.transformation import coco2shelf3D
 from src.m_utils.numeric import vectorize_distance
 from src.m_utils.mem_dataset import MemDataset
 
+CAM_LIST={
+    'CMU0_ori': [(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)],  # Origin order in MvP
+    'CMU0' : [(0, 3), (0, 6),(0, 12),(0, 13), (0, 23)],
+    'CMU0-3' : [(0, 3), (0, 6),(0, 12)],
+    'CMU0-4' : [(0, 3), (0, 6),(0, 12),(0, 13)],
+    'CMU0-6' : [(0, 3), (0, 6),(0, 12),(0, 13), (0, 23), (0, 10)],
+    'CMU0-7' : [(0, 3), (0, 6),(0, 12),(0, 13), (0, 23), (0, 10), (0, 16)],
+    'CMU0ex' : [(0, 3), (0, 6), (0, 12),(0, 13), (0, 23), (0, 10), (0, 16)],
+    'CMU1' : [(0, 1),(0, 2),(0, 3),(0, 4),(0, 6),(0, 7),(0, 10)],  
+    'CMU2' : [(0, 12), (0, 16), (0, 18), (0, 19), (0, 22), (0, 23), (0, 30)],
+    'CMU3': [(0, 10), (0, 12), (0, 16), (0, 18)],
+    'CMU4' : [(0, 6), (0, 7), (0, 10), (0, 12), (0, 16), (0, 18), (0, 19), (0, 22), (0, 23), (0, 30)],
+}
 
 
 def is_right(model_start_point, model_end_point, gt_strat_point, gt_end_point, alpha=0.5):
@@ -159,7 +172,7 @@ if __name__ == '__main__':
     parser.add_argument('--seq', type=str, help='A string argument')
     parser.add_argument('--cam', type=str, help='A string argument')
     args = parser.parse_args ()
-
+    seq, cam = args.seq, args.cam
     test_model = MultiEstimator ( cfg=model_cfg )
 
     for dataset_idx, dataset_name in enumerate ( args.datasets ):
@@ -177,25 +190,51 @@ if __name__ == '__main__':
             
         elif dataset_name == 'panoptic':
             dataset_path = 'dataset/panoptic'
-            seq = args.seq
-            cam = args.cam
 
         else:
             dataset_path = model_cfg.panoptic_ultimatum_path
             test_range = range ( 4500, 4900 )
             gt_path = osp.join ( dataset_path, '..' )
-
-        with open ( osp.join ( dataset_path, 'camera_parameter.pickle' ),
-                    'rb' ) as f:
-            camera_parameter = pickle.load ( f )
         
+        if dataset_name != 'panoptic':
+
+            with open ( osp.join ( dataset_path, 'camera_parameter.pickle' ),
+                        'rb' ) as f:
+                camera_parameter = pickle.load ( f )
+        else:
+            json_file_path = f'datasets/panoptic/{seq}/calibration_{seq}.json'
+            cam_list = CAM_LIST[cam]
+
+            with open(json_file_path, 'r') as json_file:
+                data = json.load(json_file)
+                cameras = data['cameras']
+                selected_cameras = []
+                for cam_id, cam_name in enumerate(cam_list):
+                    for camera in cameras:
+                        if camera['name'] == f'{cam_name[0]:02}_{cam_name[1]:02}':
+                            selected_cameras.append(camera)
+                            break
+
+            print(selected_cameras)
+
+            K = np.stack([np.array(camera['K']) for camera in selected_cameras], axis=0).astype(np.float32)
+            # Rt = np.hstack((R, t.reshape(-1, 1)))
+            RT = np.stack([np.hstack((np.array(camera['R']), np.array(camera['t']).reshape(-1, 1))) for camera in selected_cameras], axis=0).astype(np.float32)
+
+            P = np.stack([np.dot(K[i], RT[i]) for i in range(len(selected_cameras))], axis=0).astype(np.float64)
+
+            camera_parameter = {
+                'K': K,
+                'RT': RT,
+                'P': P,
+            }
             
         if args.dumped_dir:
             test_dataset = PreprocessedDataset ( args.dumped_dir[dataset_idx])
             logger.info ( f"Using pre-processed datasets {args.dumped_dir[dataset_idx]} for quicker evaluation" )
             test_loader = DataLoader ( test_dataset, batch_size=1, pin_memory=True, num_workers=6, shuffle=False )
         else:
-            test_dataset = BaseDataset ( dataset_path, test_range ) if dataset_name != 'panoptic' else CustomDataset ( dataset_path, seq ,cam )
+            test_dataset = BaseDataset ( dataset_path, test_range ) if dataset_name != 'panoptic' else CustomDataset ( dataset_path, seq, cam )
             test_loader = DataLoader ( test_dataset, batch_size=1, pin_memory=True, num_workers=12, shuffle=False )
 
         actorsGT = scio.loadmat ( osp.join ( gt_path, 'actorsGT.mat' ) )
