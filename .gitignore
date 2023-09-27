@@ -253,3 +253,6 @@ venv.bak/
 .mypy_cache/
 
 
+backend/light_head_rcnn/output
+backend/tf_cpn/log
+backend/CamStyle
