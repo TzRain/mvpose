@@ -190,7 +190,7 @@ if __name__ == '__main__':
             gt_path = dataset_path
             
         elif dataset_name == 'panoptic':
-            dataset_path = 'dataset/panoptic'
+            dataset_path = 'datasets/panoptic'
 
         else:
             dataset_path = model_cfg.panoptic_ultimatum_path
