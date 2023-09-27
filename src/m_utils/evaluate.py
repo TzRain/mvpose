@@ -65,9 +65,6 @@ def numpify(info_dicts):
 
 
 def evaluate(model, actor3D, range_, loader, is_info_dicts=False, dump_dir=None):
-    check_result = np.zeros ( (len ( actor3D[0] ), len ( actor3D ), 10), dtype=np.int32 )
-    accuracy_cnt = 0
-    error_cnt = 0
     poses3ds = []
     for idx, imgs in enumerate ( tqdm ( loader ) ):
         img_id = range_[idx]
@@ -89,7 +86,9 @@ def evaluate(model, actor3D, range_, loader, is_info_dicts=False, dump_dir=None)
         poses3ds.append(poses3d)
         
     return poses3ds
-    
+    check_result = np.zeros ( (len ( actor3D[0] ), len ( actor3D ), 10), dtype=np.int32 )
+    accuracy_cnt = 0
+    error_cnt = 0
     #     for pid in range ( len ( actor3D ) ):
     #         if actor3D[pid][img_id][0].shape == (1, 0) or actor3D[pid][img_id][0].shape == (0, 0):
 
@@ -191,6 +190,7 @@ if __name__ == '__main__':
             
         elif dataset_name == 'panoptic':
             dataset_path = 'datasets/panoptic'
+            test_range = None
 
         else:
             dataset_path = model_cfg.panoptic_ultimatum_path
@@ -238,10 +238,8 @@ if __name__ == '__main__':
             test_dataset = BaseDataset ( dataset_path, test_range ) if dataset_name != 'panoptic' else CustomDataset ( dataset_path, seq, cam )
             test_loader = DataLoader ( test_dataset, batch_size=1, pin_memory=True, num_workers=12, shuffle=False )
 
-        actorsGT = scio.loadmat ( osp.join ( gt_path, 'actorsGT.mat' ) )
-        test_actor3D = actorsGT['actor3D'][0]
-        if dataset_name == 'Panoptic':
-            test_actor3D /= 100  # mm->m
+        actorsGT = scio.loadmat ( osp.join ( gt_path, 'actorsGT.mat' ) ) if dataset_name != 'panoptic' else None
+        test_actor3D = actorsGT['actor3D'][0] if dataset_name != 'panoptic' else None
         poses3ds = evaluate ( test_model, test_actor3D, test_range, test_loader, is_info_dicts=bool ( args.dumped_dir ),
                    dump_dir=osp.join ( project_root, 'result' ) )
         if dataset_name == 'panoptic':
