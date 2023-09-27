@@ -204,4 +204,5 @@ if __name__ == '__main__':
             test_actor3D /= 100  # mm->m
         poses3ds = evaluate ( test_model, test_actor3D, test_range, test_loader, is_info_dicts=bool ( args.dumped_dir ),
                    dump_dir=osp.join ( project_root, 'result' ) )
-        np.save (  f'logs/{dataset_name}_{seq}_{cam}_poses3ds.npy', poses3ds )
+        if dataset_name == 'panoptic':
+            np.save (  f'logs/{dataset_name}_{seq}_{cam}_poses3ds.npy', poses3ds )
