@@ -167,7 +167,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser ()
-    parser.add_argument ( '-d', nargs='+', dest='datasets', required=True, choices=['Shelf', 'Campus'] )
+    parser.add_argument ( '-d', nargs='+', dest='datasets', required=True, choices=['Shelf', 'Campus','panoptic'] )
     parser.add_argument ( '-dumped', nargs='+', dest='dumped_dir', default=None )
     parser.add_argument('--seq', type=str, help='A string argument')
     parser.add_argument('--cam', type=str, help='A string argument')
