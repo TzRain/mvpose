@@ -44,7 +44,7 @@ class CustomDataset ( Dataset ):
 
     def __getitem__(self, item):
         imgs = list ()
-        for cam_id in self.cam_num:
+        for cam_id in len(self.cam_num):
             imgs.append ( cv2.imread ( self.infos[cam_id][item] ) )
         return imgs
 
