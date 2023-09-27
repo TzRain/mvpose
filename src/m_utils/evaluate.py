@@ -67,7 +67,7 @@ def numpify(info_dicts):
 def evaluate(model, actor3D, range_, loader, is_info_dicts=False, dump_dir=None):
     poses3ds = []
     for idx, imgs in enumerate ( tqdm ( loader ) ):
-        img_id = range_[idx]
+        img_id = range_[idx] if range_ is not None else None
         try:
             if is_info_dicts:
                 info_dicts = numpify ( imgs )
