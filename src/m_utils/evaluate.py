@@ -88,79 +88,79 @@ def evaluate(model, actor3D, range_, loader, is_info_dicts=False, dump_dir=None)
         poses3ds.append(poses3d)
         
     return poses3ds
+    
+    #     for pid in range ( len ( actor3D ) ):
+    #         if actor3D[pid][img_id][0].shape == (1, 0) or actor3D[pid][img_id][0].shape == (0, 0):
 
-        for pid in range ( len ( actor3D ) ):
-            if actor3D[pid][img_id][0].shape == (1, 0) or actor3D[pid][img_id][0].shape == (0, 0):
+    #             continue
 
-                continue
+    #         if not poses3d:
+    #             check_result[img_id, pid, :] = -1
+    #             logger.error ( f'Cannot get any pose in img:{img_id}' )
+    #             continue
+    #         model_poses = np.stack ( [coco2shelf3D ( i ) for i in deepcopy ( poses3d )] )
+    #         gt_pose = actor3D[pid][img_id][0]
+    #         dist = vectorize_distance ( np.expand_dims ( gt_pose, 0 ), model_poses )
+    #         model_pose = model_poses[np.argmin ( dist[0] )]
 
-            if not poses3d:
-                check_result[img_id, pid, :] = -1
-                logger.error ( f'Cannot get any pose in img:{img_id}' )
-                continue
-            model_poses = np.stack ( [coco2shelf3D ( i ) for i in deepcopy ( poses3d )] )
-            gt_pose = actor3D[pid][img_id][0]
-            dist = vectorize_distance ( np.expand_dims ( gt_pose, 0 ), model_poses )
-            model_pose = model_poses[np.argmin ( dist[0] )]
+    #         bones = [[0, 1], [1, 2], [3, 4], [4, 5], [6, 7], [7, 8], [9, 10], [10, 11], [12, 13]]
+    #         for i, bone in enumerate ( bones ):
+    #             start_point, end_point = bone
+    #             if is_right ( model_pose[start_point], model_pose[end_point], gt_pose[start_point],
+    #                           gt_pose[end_point] ):
+    #                 check_result[img_id, pid, i] = 1
+    #                 accuracy_cnt += 1
+    #             else:
+    #                 check_result[img_id, pid, i] = -1
+    #                 error_cnt += 1
+    #         gt_hip = (gt_pose[2] + gt_pose[3]) / 2
+    #         model_hip = (model_pose[2] + model_pose[3]) / 2
+    #         if is_right ( model_hip, model_pose[12], gt_hip, gt_pose[12] ):
+    #             check_result[img_id, pid, -1] = 1
+    #             accuracy_cnt += 1
+    #         else:
+    #             check_result[img_id, pid, -1] = -1
+    #             error_cnt += 1
+    # bone_group = OrderedDict (
+    #     [('Head', np.array ( [8] )), ('Torso', np.array ( [9] )), ('Upper arms', np.array ( [5, 6] )),
+    #      ('Lower arms', np.array ( [4, 7] )), ('Upper legs', np.array ( [1, 2] )),
+    #      ('Lower legs', np.array ( [0, 3] ))] )
 
-            bones = [[0, 1], [1, 2], [3, 4], [4, 5], [6, 7], [7, 8], [9, 10], [10, 11], [12, 13]]
-            for i, bone in enumerate ( bones ):
-                start_point, end_point = bone
-                if is_right ( model_pose[start_point], model_pose[end_point], gt_pose[start_point],
-                              gt_pose[end_point] ):
-                    check_result[img_id, pid, i] = 1
-                    accuracy_cnt += 1
-                else:
-                    check_result[img_id, pid, i] = -1
-                    error_cnt += 1
-            gt_hip = (gt_pose[2] + gt_pose[3]) / 2
-            model_hip = (model_pose[2] + model_pose[3]) / 2
-            if is_right ( model_hip, model_pose[12], gt_hip, gt_pose[12] ):
-                check_result[img_id, pid, -1] = 1
-                accuracy_cnt += 1
-            else:
-                check_result[img_id, pid, -1] = -1
-                error_cnt += 1
-    bone_group = OrderedDict (
-        [('Head', np.array ( [8] )), ('Torso', np.array ( [9] )), ('Upper arms', np.array ( [5, 6] )),
-         ('Lower arms', np.array ( [4, 7] )), ('Upper legs', np.array ( [1, 2] )),
-         ('Lower legs', np.array ( [0, 3] ))] )
+    # total_avg = np.sum ( check_result > 0 ) / np.sum ( np.abs ( check_result ) )
+    # person_wise_avg = np.sum ( check_result > 0, axis=(0, 2) ) / np.sum ( np.abs ( check_result ), axis=(0, 2) )
 
-    total_avg = np.sum ( check_result > 0 ) / np.sum ( np.abs ( check_result ) )
-    person_wise_avg = np.sum ( check_result > 0, axis=(0, 2) ) / np.sum ( np.abs ( check_result ), axis=(0, 2) )
+    # bone_wise_result = OrderedDict ()
+    # bone_person_wise_result = OrderedDict ()
+    # for k, v in bone_group.items ():
+    #     bone_wise_result[k] = np.sum ( check_result[:, :, v] > 0 ) / np.sum ( np.abs ( check_result[:, :, v] ) )
+    #     bone_person_wise_result[k] = np.sum ( check_result[:, :, v] > 0, axis=(0, 2) ) / np.sum (
+    #         np.abs ( check_result[:, :, v] ), axis=(0, 2) )
 
-    bone_wise_result = OrderedDict ()
-    bone_person_wise_result = OrderedDict ()
-    for k, v in bone_group.items ():
-        bone_wise_result[k] = np.sum ( check_result[:, :, v] > 0 ) / np.sum ( np.abs ( check_result[:, :, v] ) )
-        bone_person_wise_result[k] = np.sum ( check_result[:, :, v] > 0, axis=(0, 2) ) / np.sum (
-            np.abs ( check_result[:, :, v] ), axis=(0, 2) )
+    # tb = PrettyTable ()
+    # tb.field_names = ['Bone Group'] + [f'Actor {i}' for i in range ( bone_person_wise_result['Head'].shape[0] )] + [
+    #     'Average']
+    # list_tb = [tb.field_names]
+    # for k, v in bone_person_wise_result.items ():
 
-    tb = PrettyTable ()
-    tb.field_names = ['Bone Group'] + [f'Actor {i}' for i in range ( bone_person_wise_result['Head'].shape[0] )] + [
-        'Average']
-    list_tb = [tb.field_names]
-    for k, v in bone_person_wise_result.items ():
-
-        this_row = [k] + [np.char.mod ( '%.4f', i ) for i in v] + [np.char.mod ( '%.4f', np.sum ( v ) / len ( v ) )]
-        list_tb.append ( [float ( i ) if isinstance ( i, type ( np.array ( [] ) ) ) else i for i in this_row] )
-        tb.add_row ( this_row )
-    this_row = ['Total'] + [np.char.mod ( '%.4f', i ) for i in person_wise_avg] + [
-        np.char.mod ( '%.4f', np.sum ( person_wise_avg ) / len ( person_wise_avg ) )]
-    tb.add_row ( this_row )
-    list_tb.append ( [float ( i ) if isinstance ( i, type ( np.array ( [] ) ) ) else i for i in this_row] )
-    if dump_dir:
-        np.save ( osp.join ( dump_dir, time.strftime ( str ( model_cfg.testing_on ) + "_%Y_%m_%d_%H_%M",
-                                                       time.localtime ( time.time () ) ) ), check_result )
-        with open ( osp.join ( dump_dir,
-                               time.strftime ( str ( model_cfg.testing_on ) + "_%Y_%m_%d_%H_%M.csv",
-                                               time.localtime ( time.time () ) ) ), 'w' ) as f:
-            writer = csv.writer ( f )
-            writer.writerows ( list_tb )
-            writer.writerow ( [model_cfg] )
-    print ( tb )
-    print ( model_cfg )
-    return check_result, list_tb
+    #     this_row = [k] + [np.char.mod ( '%.4f', i ) for i in v] + [np.char.mod ( '%.4f', np.sum ( v ) / len ( v ) )]
+    #     list_tb.append ( [float ( i ) if isinstance ( i, type ( np.array ( [] ) ) ) else i for i in this_row] )
+    #     tb.add_row ( this_row )
+    # this_row = ['Total'] + [np.char.mod ( '%.4f', i ) for i in person_wise_avg] + [
+    #     np.char.mod ( '%.4f', np.sum ( person_wise_avg ) / len ( person_wise_avg ) )]
+    # tb.add_row ( this_row )
+    # list_tb.append ( [float ( i ) if isinstance ( i, type ( np.array ( [] ) ) ) else i for i in this_row] )
+    # if dump_dir:
+    #     np.save ( osp.join ( dump_dir, time.strftime ( str ( model_cfg.testing_on ) + "_%Y_%m_%d_%H_%M",
+    #                                                    time.localtime ( time.time () ) ) ), check_result )
+    #     with open ( osp.join ( dump_dir,
+    #                            time.strftime ( str ( model_cfg.testing_on ) + "_%Y_%m_%d_%H_%M.csv",
+    #                                            time.localtime ( time.time () ) ) ), 'w' ) as f:
+    #         writer = csv.writer ( f )
+    #         writer.writerows ( list_tb )
+    #         writer.writerow ( [model_cfg] )
+    # print ( tb )
+    # print ( model_cfg )
+    # return check_result, list_tb
 
 
 if __name__ == '__main__':
