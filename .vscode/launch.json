@@ -19,7 +19,7 @@
             "request": "launch",
             "program": "convert_cam.py",
             "args": [
-                "--seq","160224_haggling1",
+                "--seq","160906_pizza1",
                 "--cam","CMU0"
             ],
             "console": "integratedTerminal",

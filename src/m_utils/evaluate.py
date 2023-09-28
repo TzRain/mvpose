@@ -221,10 +221,12 @@ if __name__ == '__main__':
                             break
 
             print(selected_cameras)
-
+            M = np.array([[1.0, 0.0, 0.0],
+                [0.0, 0.0, -1.0],
+                [0.0, 1.0, 0.0]])
             K = np.stack([np.array(camera['K']) for camera in selected_cameras], axis=0).astype(np.float32)
             T = np.stack([np.array(camera['t']) for camera in selected_cameras], axis=0).astype(np.float32)
-            R = np.stack([np.array(camera['R']) for camera in selected_cameras], axis=0).astype(np.float32)
+            R = np.stack([np.array(camera['R']).dot(M) for camera in selected_cameras], axis=0).astype(np.float32)
             T = np.stack([ - np.dot(R[i], T[i]) for i in range(len(selected_cameras))], axis=0).astype(np.float64)
 
             RT_pre = np.stack([np.hstack((np.array(camera['R']), np.array(camera['t']).reshape(-1, 1))) for camera in selected_cameras], axis=0).astype(np.float32)
