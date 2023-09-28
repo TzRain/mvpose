@@ -84,7 +84,9 @@ def evaluate(model, actor3D, range_, loader, is_info_dicts=False, dump_dir=None)
             logger.critical ( e )
             poses3d = False
         poses3ds.append(poses3d)
-        break
+        
+        if idx > 4:
+            break
         
     return poses3ds
     check_result = np.zeros ( (len ( actor3D[0] ), len ( actor3D ), 10), dtype=np.int32 )
