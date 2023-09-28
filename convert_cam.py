@@ -39,7 +39,13 @@ print(selected_cameras)
 
 K = np.stack([np.array(camera['K']) for camera in selected_cameras], axis=0).astype(np.float32)
 # Rt = np.hstack((R, t.reshape(-1, 1)))
-RT = np.stack([np.hstack((np.array(camera['R']), np.array(camera['t']).reshape(-1, 1))) for camera in selected_cameras], axis=0).astype(np.float32)
+T = np.stack([np.array(camera['t']) for camera in selected_cameras], axis=0).astype(np.float32)
+R = np.stack([np.array(camera['R']) for camera in selected_cameras], axis=0).astype(np.float32)
+T = np.stack([ - np.dot(R[i], T[i]) for i in range(len(selected_cameras))], axis=0).astype(np.float64)
+
+RT_pre = np.stack([np.hstack((np.array(camera['R']), np.array(camera['t']).reshape(-1, 1))) for camera in selected_cameras], axis=0).astype(np.float32)
+RT = np.stack([ np.concatenate((R[i], T[i]),axis=-1) for i in range(len(selected_cameras))], axis=0).astype(np.float64)
+
 
 P = np.stack([np.dot(K[i], RT[i]) for i in range(len(selected_cameras))], axis=0).astype(np.float64)
 

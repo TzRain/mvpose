@@ -1,18 +1,42 @@
 import numpy as np
+import pickle
 
 CMU0_Path = 'logs/panoptic_160906_pizza1_CMU0_poses3ds.npy'
 CMU0_Path = 'logs/panoptic_160906_pizza1_CMU0_poses3ds_debug.npy'
-info_dict_PATH = "logs/info_dict_debug_std.npy"
-info_dict = np.load(info_dict_PATH,allow_pickle=True).item()
-
-for key, value in info_dict.items():
-    print(key)
-    print(value)
-    print()
 
 pose3d = np.load(CMU0_Path,allow_pickle=True)
 
 seq = '160906_pizza1'
+
+
+# 打开文件以读取二进制数据
+file_path = 'logs/info_dict_debug.pkl'
+with open(file_path, 'rb') as file:
+    # 使用pickle的load函数从文件中加载数据
+    loaded_info_dict = pickle.load(file)
+
+# 打印加载的数据
+print("加载的info_dict数据:")
+print(loaded_info_dict)
+
+
+
+from PIL import Image
+import numpy as np
+
+# 创建一个示例的 (651, 191, 3) 图像数据，这里使用随机数据作为示例
+image_data = loaded_info_dict[0][0][0]['cropped_img']
+
+# 创建一个PIL图像对象
+image = Image.fromarray(image_data)
+
+# 指定要保存的文件路径
+file_path = 'image_debug.png'
+
+# 保存图像
+image.save(file_path)
+
+print(f"图像已保存到 {file_path}")
 
 # for seq in self.sequence_list: 
     # for a specific dataset
