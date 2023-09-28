@@ -83,6 +83,7 @@ def evaluate(model, actor3D, range_, loader, is_info_dicts=False, dump_dir=None)
         except Exception as e:
             logger.critical ( e )
             poses3d = False
+        print(poses3d)
         poses3ds.append(poses3d)
         
         if idx > 4:
