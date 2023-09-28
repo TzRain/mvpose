@@ -2,6 +2,7 @@
 import sys
 import os
 import os.path as osp
+import pickle
 
 # Config project if not exist
 project_path = osp.abspath ( osp.join ( osp.dirname ( __file__ ), '..', '..' ) )
@@ -38,8 +39,11 @@ class MultiEstimator ( object ):
 
     def predict(self, imgs, camera_parameter, template_name='Shelf', show=False, plt_id=0):
         info_dict = self._infer_single2d ( imgs )
-        np.save('logs/info_dict_debug.npy', info_dict)
         try:
+            file_path = 'logs/info_dict_debug.pkl'
+            with open(file_path, 'wb') as file:
+                pickle.dump(info_dict, file)
+                
             print('len',len(imgs))
             print('type',imgs[0].type)
             print('shape',imgs[0].shape)

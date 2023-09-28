@@ -2,6 +2,13 @@ import numpy as np
 
 CMU0_Path = 'logs/panoptic_160906_pizza1_CMU0_poses3ds.npy'
 CMU0_Path = 'logs/panoptic_160906_pizza1_CMU0_poses3ds_debug.npy'
+info_dict_PATH = "logs/info_dict_debug_std.npy"
+info_dict = np.load(info_dict_PATH,allow_pickle=True).item()
+
+for key, value in info_dict.items():
+    print(key)
+    print(value)
+    print()
 
 pose3d = np.load(CMU0_Path,allow_pickle=True)
 
