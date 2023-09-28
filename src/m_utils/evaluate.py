@@ -224,15 +224,18 @@ if __name__ == '__main__':
             M = np.array([[1.0, 0.0, 0.0],
                 [0.0, 0.0, -1.0],
                 [0.0, 1.0, 0.0]])
+            
+            # stage 0 
             K = np.stack([np.array(camera['K']) for camera in selected_cameras], axis=0).astype(np.float32)
             T = np.stack([np.array(camera['t']) for camera in selected_cameras], axis=0).astype(np.float32)
-            R = np.stack([np.array(camera['R']).dot(M) for camera in selected_cameras], axis=0).astype(np.float32)
-            T = np.stack([ - np.dot(R[i], T[i]) for i in range(len(selected_cameras))], axis=0).astype(np.float64)
-
-            RT_pre = np.stack([np.hstack((np.array(camera['R']), np.array(camera['t']).reshape(-1, 1))) for camera in selected_cameras], axis=0).astype(np.float32)
+            R = np.stack([np.array(camera['R']) for camera in selected_cameras], axis=0).astype(np.float32)
+            # stage 1
+            T = np.stack([-np.dot(R[i].T, T[i]) * 10.0 for i in range(len(selected_cameras))], axis=0).astype(np.float64)
+            T = np.stack([np.dot(M.T,T[i]) for i in range(len(selected_cameras))], axis=0).astype(np.float64)
+            # stage 2
+            R = np.stack([R[i].dot(M) for i in range(len(selected_cameras))], axis=0).astype(np.float64)
+            T = np.stack([ -np.dot(R[i], T[i]) for i in range(len(selected_cameras))], axis=0).astype(np.float64)
             RT = np.stack([ np.concatenate((R[i], T[i]),axis=-1) for i in range(len(selected_cameras))], axis=0).astype(np.float64)
-
-
             P = np.stack([np.dot(K[i], RT[i]) for i in range(len(selected_cameras))], axis=0).astype(np.float64)
 
             camera_parameter = {
