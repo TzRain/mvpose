@@ -38,6 +38,13 @@ class MultiEstimator ( object ):
 
     def predict(self, imgs, camera_parameter, template_name='Shelf', show=False, plt_id=0):
         info_dict = self._infer_single2d ( imgs )
+        np.save('logs/info_dict_debug.npy', info_dict)
+        try:
+            print('len',len(imgs))
+            print('type',imgs[0].type)
+            print('shape',imgs[0].shape)
+        except Exception as e:
+            print(e)
         self.dataset = MemDataset ( info_dict=info_dict, camera_parameter=camera_parameter,
                                     template_name=template_name )
         return self._estimate3d ( 0, show=show, plt_id=plt_id )

@@ -1,6 +1,7 @@
 import numpy as np
 
 CMU0_Path = 'logs/panoptic_160906_pizza1_CMU0_poses3ds.npy'
+CMU0_Path = 'logs/panoptic_160906_pizza1_CMU0_poses3ds_debug.npy'
 
 pose3d = np.load(CMU0_Path,allow_pickle=True)
 
