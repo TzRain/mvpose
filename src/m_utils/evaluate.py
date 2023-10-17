@@ -227,7 +227,7 @@ if __name__ == '__main__':
             T = np.stack([np.array(camera['t']) for camera in selected_cameras], axis=0).astype(np.float32)
             R = np.stack([np.array(camera['R']) for camera in selected_cameras], axis=0).astype(np.float32)
             # stage 1
-            T = np.stack([-np.dot(R[i].T, T[i]) * 10.0 for i in range(len(selected_cameras))], axis=0).astype(np.float64)
+            T = np.stack([-np.dot(R[i].T, T[i]) * 10.0 / 1000 for i in range(len(selected_cameras))], axis=0).astype(np.float64)
             T = np.stack([np.dot(M.T,T[i]) for i in range(len(selected_cameras))], axis=0).astype(np.float64)
             # stage 2
             R = np.stack([R[i].dot(M) for i in range(len(selected_cameras))], axis=0).astype(np.float64)
