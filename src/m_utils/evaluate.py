@@ -4,6 +4,9 @@ import sys
 import os.path as osp
 import json
 import pickle
+from datetime import datetime
+current_datetime = datetime.now()
+time_stamp = current_datetime.strftime("%y-%m-%dT%H:%M")
 
 project_root = os.path.abspath ( os.path.join ( os.path.dirname ( __file__ ), '..', '..' ) )
 if __name__ == '__main__':
@@ -64,9 +67,11 @@ def numpify(info_dicts):
     return info_dicts
 
 
-def evaluate(model, actor3D, range_, loader, is_info_dicts=False, dump_dir=None):
+def evaluate(model, actor3D, range_, loader, is_info_dicts=False, dump_dir=None, save_dir=None, start_from=0):
     poses3ds = []
     for idx, imgs in enumerate ( tqdm ( loader ) ):
+        if idx < start_from:
+            continue
         img_id = range_[idx] if range_ is not None else None
         try:
             if is_info_dicts:
@@ -83,8 +88,9 @@ def evaluate(model, actor3D, range_, loader, is_info_dicts=False, dump_dir=None)
         except Exception as e:
             logger.critical ( e )
             poses3d = False
-        print(poses3d)
         poses3ds.append(poses3d)
+        if save_dir is not None:
+            np.save(f'{save_dir}/poses_{idx}.npy',poses3d)
         
     return poses3ds
     check_result = np.zeros ( (len ( actor3D[0] ), len ( actor3D ), 10), dtype=np.int32 )
@@ -251,9 +257,11 @@ if __name__ == '__main__':
 
         actorsGT = scio.loadmat ( osp.join ( gt_path, 'actorsGT.mat' ) ) if dataset_name != 'panoptic' else None
         test_actor3D = actorsGT['actor3D'][0] if dataset_name != 'panoptic' else None
-        poses3ds = evaluate ( test_model, test_actor3D, test_range, test_loader, is_info_dicts=bool ( args.dumped_dir ),
-                   dump_dir=osp.join ( project_root, 'result' ) )
-        print(poses3ds)
         if dataset_name == 'panoptic':
-            # np.save (  f'logs/{dataset_name}_{seq}_{cam}_poses3ds.npy', poses3ds )
-            np.save (  f'logs/{dataset_name}_{seq}_{cam}_poses3ds_debug.npy', poses3ds )
+            save_dir = f'logs/{dataset_name}_{seq}_{cam}_{time_stamp}'
+            os.makedirs(save_dir)
+        poses3ds = evaluate ( test_model, test_actor3D, test_range, test_loader, is_info_dicts=bool ( args.dumped_dir ),
+                   dump_dir=osp.join ( project_root, 'result' ),save_dir=save_dir )
+        if dataset_name == 'panoptic':
+            np.save (  f'{save_dir}/poses3ds.npy', poses3ds )
+            
