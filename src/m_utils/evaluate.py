@@ -178,9 +178,10 @@ if __name__ == '__main__':
     parser.add_argument ( '-dumped', nargs='+', dest='dumped_dir', default=None )
     parser.add_argument('--seq', type=str, help='A string argument')
     parser.add_argument('--cam', type=str, help='A string argument')
+    parser.add_argument('--load-pose', type=str, help='pose dir', default=None)
     args = parser.parse_args ()
     seq, cam = args.seq, args.cam
-    test_model = MultiEstimator ( cfg=model_cfg )
+    test_model = MultiEstimator ( cfg=model_cfg ) if args.load_pose is None else None
 
     for dataset_idx, dataset_name in enumerate ( args.datasets ):
         model_cfg.testing_on = dataset_name
@@ -223,7 +224,6 @@ if __name__ == '__main__':
                             selected_cameras.append(camera)
                             break
 
-            print(selected_cameras)
             M = np.array([[1.0, 0.0, 0.0],
                 [0.0, 0.0, -1.0],
                 [0.0, 1.0, 0.0]])
@@ -260,7 +260,12 @@ if __name__ == '__main__':
         if dataset_name == 'panoptic':
             save_dir = f'logs/{dataset_name}_{seq}_{cam}_{time_stamp}'
             os.makedirs(save_dir)
-        poses3ds = evaluate ( test_model, test_actor3D, test_range, test_loader, is_info_dicts=bool ( args.dumped_dir ),
+        if args.load_pose is not None:
+            poses3ds = np.load(f'{args.load_pose}/poses3ds.npy')
+            poses3ds = [pose if pose!=False else [] for pose in poses3ds]
+            aps, recs, recall500, mpjpe = test_dataset.evaluate(poses3ds)
+        else:
+            poses3ds = evaluate ( test_model, test_actor3D, test_range, test_loader, is_info_dicts=bool ( args.dumped_dir ),
                    dump_dir=osp.join ( project_root, 'result' ),save_dir=save_dir )
         if dataset_name == 'panoptic':
             np.save (  f'{save_dir}/poses3ds.npy', poses3ds )

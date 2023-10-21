@@ -8,6 +8,8 @@ import os
 import os.path as osp
 from collections import OrderedDict
 import cv2
+from prettytable import PrettyTable
+import json
 
 JOINTS_DEF = {
     'neck': 0,
@@ -70,8 +72,9 @@ class CustomDataset ( Dataset ):
     def get_pose3d(self,item):
         image_file = self.infos[0][item]
         # jialzhu/data/panoptic/160906_band4/hdPose3d_stage1_coco19/body3DScene_00009961.json
+        # /home/tz/repo/mvpose/datasets/panoptic/160422_haggling1/hdPose3d_stage1_coco19/body3DScene_00000000.json
         # jialzhu/data/panoptic/160906_band4/hdImgs/00_03/00_03_00000026.jpg
-        folder_path = '/'.join(image_file.split('/')[:-2])
+        folder_path = '/'.join(image_file.split('/')[:-3])
         frame_id = re.search(r'\d{8}', image_file).group()
         anno_file = f'{folder_path}/hdPose3d_stage1_coco19/body3DScene_{frame_id}.json'
         
@@ -79,7 +82,7 @@ class CustomDataset ( Dataset ):
         all_poses_3d = []
         all_poses_vis_3d = []
 
-        if os.path.exists(file_path):
+        if os.path.exists(anno_file):
             with open(anno_file) as dfile:
                 bodies = json.load(dfile)['bodies']
         
@@ -92,7 +95,8 @@ class CustomDataset ( Dataset ):
 
             all_poses_3d.append(pose3d[:, 0:3])
             all_poses_vis_3d.append(np.repeat(np.reshape(joints_vis, (-1, 1)), 3, axis=1))
-            return all_poses_3d, all_poses_vis_3d
+            
+        return all_poses_3d, all_poses_vis_3d
     
     @staticmethod
     def _eval_list_to_ap(eval_list, total_gt, threshold):
@@ -125,13 +129,14 @@ class CustomDataset ( Dataset ):
     def evaluate(self,preds):
         eval_list = []
         total_gt = 0
-        for i,pred in enumerate(preds)
+        for i,pred in enumerate(preds):
             joints_3d, joints_3d_vis = self.get_pose3d(i)
             if len(joints_3d) == 0:
                 continue
 
             pred = preds[i].copy()
-            pred = pred[pred[:, 0, 3] >= 0]
+            if len(pred) > 0 :
+                pred = [pose.T for pose in pred] 
             for pose in pred:
                 mpjpes = []
                 for (gt, gt_vis) in zip(joints_3d, joints_3d_vis):
@@ -162,7 +167,8 @@ class CustomDataset ( Dataset ):
             [f'{re * 100:.2f}' for re in recs] +
             [f'{recall500 * 100:.2f}',f'{mpjpe:.2f}']
         )
-        logger.info(tb)
+        print(tb)
+        return aps, recs, recall500, mpjpe
 
     @staticmethod
     def _eval_list_to_mpjpe(eval_list, threshold=500):
@@ -182,8 +188,8 @@ class CustomDataset ( Dataset ):
         gt_ids = [e["gt_id"] for e in eval_list if e["mpjpe"] < threshold]
         return len(np.unique(gt_ids)) / total_gt
     
-    @staticmethod
-    def _eval_list(eval_list, total_gt, mpjpe_threshold):
+    
+    def _eval_list(self, eval_list, total_gt, mpjpe_threshold):
         aps = []
         recs = []
         for t in mpjpe_threshold:

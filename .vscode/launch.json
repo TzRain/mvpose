@@ -43,5 +43,14 @@
             "args": ["-d", "panoptic", "--seq", "160906_pizza1", "--cam","CMU0-7"],
             "justMyCode": true
         },
+        {
+            "name": "EVAL panoptic 160906_pizza1 CMU0",
+            "type": "python",
+            "request": "launch",
+            "program": "./src/m_utils/evaluate.py",
+            "console": "integratedTerminal",
+            "args": ["-d", "panoptic", "--seq", "160422_haggling1", "--cam","CMU0","--load-pose","logs/panoptic_160422_haggling1_CMU0_23-10-17T18:59"],
+            "justMyCode": true
+        },
     ]
 }

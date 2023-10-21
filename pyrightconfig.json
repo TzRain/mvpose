@@ -1,0 +1,13 @@
+{
+    "exclude": [
+      "**/node_modules",
+      "**/__pycache__",
+      "src/experimental",
+      "src/typestubs",
+      "logs",
+      "datasets",
+      "assets",
+      ".vscode",
+      "backends",
+    ],
+}
