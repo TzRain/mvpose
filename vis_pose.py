@@ -7,6 +7,7 @@ from mpl_toolkits.mplot3d import axes3d, Axes3D
 
 CONNECTIVITY_DICT = {
     'cmu': [(0, 2), (0, 9), (1, 0), (1, 17), (2, 12), (3, 0), (4, 3), (5, 4), (6, 2), (7, 6), (8, 7), (9, 10), (10, 11), (12, 13), (13, 14), (15, 1), (16, 15), (17, 18)],
+    'cmu_15': [(0, 2), (0, 9), (1, 0), (2, 12), (3, 0), (4, 3), (5, 4), (6, 2), (7, 6), (8, 7), (9, 10), (10, 11), (12, 13), (13, 14)],
     'coco': [(0, 1), (0, 2), (1, 3), (2, 4), (5, 7), (7, 9), (6, 8), (8, 10), (11, 13), (13, 15), (12, 14), (14, 16), (5, 6), (5, 11), (6, 12), (11, 12)],
     "mpii": [(0, 1), (1, 2), (2, 6), (5, 4), (4, 3), (3, 6), (6, 7), (7, 8), (8, 9), (8, 12), (8, 13), (10, 11), (11, 12), (13, 14), (14, 15)],
     "human36m": [(0, 1), (1, 2), (2, 6), (5, 4), (4, 3), (3, 6), (6, 7), (7, 8), (8, 16), (9, 16), (8, 12), (11, 12), (10, 11), (8, 13), (13, 14), (14, 15)],
@@ -100,13 +101,70 @@ def draw_3d_pose(keypoints, ax, keypoints_mask=None, kind='cmu', radius=None, ro
 
     ax.set_aspect('equal')
 
-keypoints = np.load('poses3d_cmu.npy')
 
-# print(keypoints)
+import numpy as np
+
+CMU_JOINTS_DEF = {
+    'neck': 0,
+    'nose': 1,
+    'mid-hip': 2,
+    'l-shoulder': 3,
+    'l-elbow': 4,
+    'l-wrist': 5,
+    'l-hip': 6,
+    'l-knee': 7,
+    'l-ankle': 8,
+    'r-shoulder': 9,
+    'r-elbow': 10,
+    'r-wrist': 11,
+    'r-hip': 12,
+    'r-knee': 13,
+    'r-ankle': 14,
+}
+
+COCO_JOINTS_DEF = {
+    "nose": 0,
+    "l-eye": 1,
+    "r-eye": 2,
+    "l-ear": 3,
+    "r-ear": 4,
+    "l-shoulder": 5,
+    "r-shoulder": 6,
+    "l-elbow": 7,
+    "r-elbow": 8,
+    "l-wrist": 9,
+    "r-wrist": 10,
+    "l-hip": 11,
+    "r-hip": 12,
+    "l-knee": 13,
+    "r-knee": 14,
+    "l-ankle": 15,
+    "r-ankle": 16
+}
+
+def coco_to_cmu(coco_joints):
+    cmu_joints = np.zeros((15,3))
+    for cmu_joint, cmu_index in CMU_JOINTS_DEF.items():
+        if cmu_joint in COCO_JOINTS_DEF:
+            cmu_joints[cmu_index] = coco_joints[COCO_JOINTS_DEF[cmu_joint]]
+        elif cmu_joint=='neck':
+            cmu_joints[cmu_index] = (coco_joints[COCO_JOINTS_DEF['l-shoulder']] + coco_joints[COCO_JOINTS_DEF['r-shoulder']]) / 2
+        elif cmu_joint=='mid-hip':
+            cmu_joints[cmu_index] = (coco_joints[COCO_JOINTS_DEF["l-hip"]] + coco_joints[COCO_JOINTS_DEF["r-hip"]]) / 2
+
+    return cmu_joints
+            
+
+
+keypoints = np.load('poses3d_cmu.npy')
 
 for keypoint in keypoints:
     draw_3d_pose(keypoint.T,ax=axes,kind='coco')
+plt.savefig('./pose-coco.png')
 
-plt.savefig('./pose.png')
-plt.title('Extrinsic Parameters')
-plt.show()
+fig=plt.figure()
+axes=fig.gca(projection='3d')
+
+for keypoint in keypoints:
+    draw_3d_pose(coco_to_cmu(keypoint.T),ax=axes,kind='cmu_15')
+plt.savefig('./pose-cmu.png')

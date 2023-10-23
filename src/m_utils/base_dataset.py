@@ -10,24 +10,7 @@ from collections import OrderedDict
 import cv2
 from prettytable import PrettyTable
 import json
-
-JOINTS_DEF = {
-    'neck': 0,
-    'nose': 1,
-    'mid-hip': 2,
-    'l-shoulder': 3,
-    'l-elbow': 4,
-    'l-wrist': 5,
-    'l-hip': 6,
-    'l-knee': 7,
-    'l-ankle': 8,
-    'r-shoulder': 9,
-    'r-elbow': 10,
-    'r-wrist': 11,
-    'r-hip': 12,
-    'r-knee': 13,
-    'r-ankle': 14,
-}
+from tqdm import tqdm
 
 CAM_LIST={
     'CMU0_ori': [(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)],  # Origin order in MvP
@@ -46,22 +29,89 @@ CAM_LIST={
 seq_list = ['160906_pizza1', '160422_haggling1', '160906_ian5', '160906_band4'],
 interval = 12
 ROOTIDX = 2
+CMU_JOINTS_DEF = {
+    'neck': 0,
+    'nose': 1,
+    'mid-hip': 2,
+    'l-shoulder': 3,
+    'l-elbow': 4,
+    'l-wrist': 5,
+    'l-hip': 6,
+    'l-knee': 7,
+    'l-ankle': 8,
+    'r-shoulder': 9,
+    'r-elbow': 10,
+    'r-wrist': 11,
+    'r-hip': 12,
+    'r-knee': 13,
+    'r-ankle': 14,
+}
+
+COCO_JOINTS_DEF = {
+    "nose": 0,
+    "l-eye": 1,
+    "r-eye": 2,
+    "l-ear": 3,
+    "r-ear": 4,
+    "l-shoulder": 5,
+    "r-shoulder": 6,
+    "l-elbow": 7,
+    "r-elbow": 8,
+    "l-wrist": 9,
+    "r-wrist": 10,
+    "l-hip": 11,
+    "r-hip": 12,
+    "l-knee": 13,
+    "r-knee": 14,
+    "l-ankle": 15,
+    "r-ankle": 16
+}
+
+def coco_to_cmu(coco_joints):
+    cmu_joints = np.zeros((15,3))
+    for cmu_joint, cmu_index in CMU_JOINTS_DEF.items():
+        if cmu_joint in COCO_JOINTS_DEF:
+            cmu_joints[cmu_index] = coco_joints[COCO_JOINTS_DEF[cmu_joint]]
+        elif cmu_joint=='neck':
+            cmu_joints[cmu_index] = (coco_joints[COCO_JOINTS_DEF['l-shoulder']] + coco_joints[COCO_JOINTS_DEF['r-shoulder']]) / 2
+        elif cmu_joint=='mid-hip':
+            cmu_joints[cmu_index] = (coco_joints[COCO_JOINTS_DEF["l-hip"]] + coco_joints[COCO_JOINTS_DEF["r-hip"]]) / 2
+
+    return cmu_joints
 
 class CustomDataset ( Dataset ):
-    def __init__(self, dataset_dir, seq_name, cam_list_name):
+    def __init__(self, dataset_dir, seq_name, cam_list_name, eval_only=False):
         abs_dataset_dir = osp.abspath ( dataset_dir )
         # exmaple path : 'datasets/panoptic/160224_haggling1/hdImgs/00_00'
-        self.cam_list = CAM_LIST[cam_list_name]
-        self.cam_num  = len(self.cam_list )
-        self.infos = [ [] for _ in self.cam_list]
-        for cam_id, cam_name in enumerate(self.cam_list):
-            sub_data_path = f'{abs_dataset_dir}/{seq_name}/hdImgs/{cam_name[0]:02}_{cam_name[1]:02}'
-            for frame_id , file_name in enumerate(os.listdir(sub_data_path)):
-                if frame_id % interval == 0:
-                    self.infos[cam_id].append(f'{sub_data_path}/{file_name}')
+        self.eval_only = eval_only
+        if not eval_only:
+            self.cam_list = CAM_LIST[cam_list_name]
+            self.cam_num  = len(self.cam_list )
+            self.infos = [ [] for _ in self.cam_list]
+            for cam_id, cam_name in enumerate(self.cam_list):
+                sub_data_path = f'{abs_dataset_dir}/{seq_name}/hdImgs/{cam_name[0]:02}_{cam_name[1]:02}'
+                for frame_id , file_name in enumerate(os.listdir(sub_data_path)):
+                    if frame_id % interval == 0:
+                        self.infos[cam_id].append(f'{sub_data_path}/{file_name}')
+        else:
+            self.anno_files = []
+            if not isinstance(seq_name,list):
+                seq_name = [seq_name]
+            
+            for seq in seq_name:
+                sub_data_path = f'{abs_dataset_dir}/{seq}/hdImgs/00_00'
+                for frame_id , file_name in enumerate(os.listdir(sub_data_path)): 
+                    folder_path = '/'.join(file_name.split('/')[:-3])
+                    frame_id = re.search(r'\d{8}', file_name).group()
+                    anno_file = f'{folder_path}/hdPose3d_stage1_coco19/body3DScene_{frame_id}.json'
+                    self.anno_files.append(anno_file)
+
                         
     def __len__(self):
-        return len ( self.infos[0] )
+        if not self.eval_only:
+            return len ( self.infos[0] )
+        else:
+            return len(self.anno_files)
 
     def __getitem__(self, item):
         imgs = list ()
@@ -70,13 +120,16 @@ class CustomDataset ( Dataset ):
         return imgs
     
     def get_pose3d(self,item):
-        image_file = self.infos[0][item]
-        # jialzhu/data/panoptic/160906_band4/hdPose3d_stage1_coco19/body3DScene_00009961.json
-        # /home/tz/repo/mvpose/datasets/panoptic/160422_haggling1/hdPose3d_stage1_coco19/body3DScene_00000000.json
-        # jialzhu/data/panoptic/160906_band4/hdImgs/00_03/00_03_00000026.jpg
-        folder_path = '/'.join(image_file.split('/')[:-3])
-        frame_id = re.search(r'\d{8}', image_file).group()
-        anno_file = f'{folder_path}/hdPose3d_stage1_coco19/body3DScene_{frame_id}.json'
+        if not self.eval_only:
+            image_file = self.infos[0][item]
+            # jialzhu/data/panoptic/160906_band4/hdPose3d_stage1_coco19/body3DScene_00009961.json
+            # /home/tz/repo/mvpose/datasets/panoptic/160422_haggling1/hdPose3d_stage1_coco19/body3DScene_00000000.json
+            # jialzhu/data/panoptic/160906_band4/hdImgs/00_03/00_03_00000026.jpg
+            folder_path = '/'.join(image_file.split('/')[:-3])
+            frame_id = re.search(r'\d{8}', image_file).group()
+            anno_file = f'{folder_path}/hdPose3d_stage1_coco19/body3DScene_{frame_id}.json'
+        else:
+            anno_file = self.anno_files[item]
         
         bodies = []
         all_poses_3d = []
@@ -88,7 +141,7 @@ class CustomDataset ( Dataset ):
         
         for body in bodies:
             pose3d = np.array(body['joints19']).reshape((-1, 4))
-            pose3d = pose3d[:len(JOINTS_DEF)]
+            pose3d = pose3d[:len(CMU_JOINTS_DEF)]
             joints_vis = pose3d[:, -1] > 0.1
             if not joints_vis[ROOTIDX]:
                 continue
@@ -129,14 +182,14 @@ class CustomDataset ( Dataset ):
     def evaluate(self,preds):
         eval_list = []
         total_gt = 0
-        for i,pred in enumerate(preds):
+        for i,pred in tqdm(enumerate(preds)):
             joints_3d, joints_3d_vis = self.get_pose3d(i)
             if len(joints_3d) == 0:
                 continue
 
             pred = preds[i].copy()
             if len(pred) > 0 :
-                pred = [pose.T for pose in pred] 
+                pred = [coco_to_cmu(pose.T) for pose in pred] 
             for pose in pred:
                 mpjpes = []
                 for (gt, gt_vis) in zip(joints_3d, joints_3d_vis):
@@ -146,7 +199,8 @@ class CustomDataset ( Dataset ):
                     mpjpes.append(mpjpe)
                 min_gt = np.argmin(mpjpes)
                 min_mpjpe = np.min(mpjpes)
-                score = pose[0, 4]
+                # score = pose[0, 4]
+                score = 1
                 eval_list.append({
                     "mpjpe": float(min_mpjpe),
                     "score": float(score),

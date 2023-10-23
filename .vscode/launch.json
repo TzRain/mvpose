@@ -47,10 +47,14 @@
             "name": "EVAL panoptic 160906_pizza1 CMU0",
             "type": "python",
             "request": "launch",
-            "program": "./src/m_utils/evaluate.py",
+            "program": "src/m_utils/eval_pose.py",
             "console": "integratedTerminal",
-            "args": ["-d", "panoptic", "--seq", "160422_haggling1", "--cam","CMU0","--load-pose","logs/panoptic_160422_haggling1_CMU0_23-10-17T18:59"],
+            "args": [
+                "--seq", "160906_pizza1", "160422_haggling1", "160906_ian5", "160906_band4", 
+                "--pose","logs/panoptic_160906_pizza1_CMU0_23-10-17T13:05","logs/panoptic_160422_haggling1_CMU0_23-10-17T18:59","logs/panoptic_160906_ian5_CMU0_23-10-17T23:30","logs/panoptic_160906_band4_CMU0_23-10-18T00:29"
+            ],
             "justMyCode": true
         },
     ]
 }
+
