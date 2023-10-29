@@ -142,6 +142,10 @@ COCO_JOINTS_DEF = {
     "r-ankle": 16
 }
 
+M = np.array([[1.0, 0.0, 0.0],
+            [0.0, 0.0, -1.0],
+            [0.0, 1.0, 0.0]])
+
 def coco_to_cmu(coco_joints):
     cmu_joints = np.zeros((15,3))
     for cmu_joint, cmu_index in CMU_JOINTS_DEF.items():
@@ -153,18 +157,43 @@ def coco_to_cmu(coco_joints):
             cmu_joints[cmu_index] = (coco_joints[COCO_JOINTS_DEF["l-hip"]] + coco_joints[COCO_JOINTS_DEF["r-hip"]]) / 2
 
     return cmu_joints
-            
 
+# COCO
+def vis_coco():
+    keypoints = np.load('./vis/poses3d_cmu.npy')
+    fig=plt.figure()
+    axes=fig.gca(projection='3d')
+    for keypoint in keypoints:
+        draw_3d_pose(keypoint.T,ax=axes,kind='coco')
+    plt.savefig('./vis/coco-pose-coco.png')
+    fig=plt.figure()
+    axes=fig.gca(projection='3d')
+    for keypoint in keypoints:
+        draw_3d_pose(coco_to_cmu(keypoint.T),ax=axes,kind='cmu_15')
+    plt.savefig('./vis/coco-pose-cmu.png')
 
-keypoints = np.load('poses3d_cmu.npy')
+def vis_cmu():
+    fig=plt.figure()
+    axes=fig.gca(projection='3d')
+    keypoints = np.load('./vis/cmu-gt-example-pose.npy')
+    for keypoint in keypoints:
+        draw_3d_pose(keypoint.dot(M),ax=axes,kind='cmu_15')
+    plt.savefig('./vis/cmu-pose-cmu.png')
 
-for keypoint in keypoints:
-    draw_3d_pose(keypoint.T,ax=axes,kind='coco')
-plt.savefig('./pose-coco.png')
+def vis_eval():
+    gt , pred = np.load('./vis/eval-example-pose.npy')
+    fig=plt.figure()
+    axes=fig.gca(projection='3d')
+    for keypoint in gt:
+        draw_3d_pose(keypoint,ax=axes,kind='cmu_15')
+    plt.savefig('./vis/gt.png')
 
-fig=plt.figure()
-axes=fig.gca(projection='3d')
+    fig=plt.figure()
+    axes=fig.gca(projection='3d')
+    for keypoint in pred:
+        draw_3d_pose(keypoint,ax=axes,kind='cmu_15')
+    plt.savefig('./vis/pred.png')
 
-for keypoint in keypoints:
-    draw_3d_pose(coco_to_cmu(keypoint.T),ax=axes,kind='cmu_15')
-plt.savefig('./pose-cmu.png')
+vis_coco()
+vis_cmu()
+vis_eval()

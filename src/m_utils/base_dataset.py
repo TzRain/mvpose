@@ -80,7 +80,7 @@ def coco_to_cmu(coco_joints):
     return cmu_joints
 
 class CustomDataset ( Dataset ):
-    def __init__(self, dataset_dir, seq_name, cam_list_name, eval_only=False):
+    def __init__(self, dataset_dir, seq_name, cam_list_name, eval_only=False,seq_len=None):
         abs_dataset_dir = osp.abspath ( dataset_dir )
         # exmaple path : 'datasets/panoptic/160224_haggling1/hdImgs/00_00'
         self.eval_only = eval_only
@@ -94,18 +94,39 @@ class CustomDataset ( Dataset ):
                     if frame_id % interval == 0:
                         self.infos[cam_id].append(f'{sub_data_path}/{file_name}')
         else:
-            self.anno_files = []
-            if not isinstance(seq_name,list):
-                seq_name = [seq_name]
-            
-            for seq in seq_name:
-                sub_data_path = f'{abs_dataset_dir}/{seq}/hdImgs/00_00'
-                for frame_id , file_name in enumerate(os.listdir(sub_data_path)): 
-                    folder_path = '/'.join(file_name.split('/')[:-3])
-                    frame_id = re.search(r'\d{8}', file_name).group()
-                    anno_file = f'{folder_path}/hdPose3d_stage1_coco19/body3DScene_{frame_id}.json'
-                    self.anno_files.append(anno_file)
+            self.abs_dataset_dir = abs_dataset_dir
+            self.seq_name = seq_name
+            self.seq_len = seq_len
+            self.gt_list = []
+            gt_list_path = f'logs/GT{"-".join([str(l) for l in seq_len])}.npy'
+            if os.path.exists(gt_list_path):
+                print('[gt_list] laod gt_list from',gt_list_path)
+                self.gt_list = np.load(gt_list_path)
+            else:
+                print('[gt_list] init gt_list to',gt_list_path)
+                for seq_id in range(len(seq_name)):
+                    for frame_id in tqdm(range(seq_len[seq_id])):
+                        frame = interval * frame_id
+                        anno_file = f'{abs_dataset_dir}/{seq_name[seq_id]}/hdPose3d_stage1_coco19/body3DScene_{frame:08d}.json'
+                        bodies = []
+                        all_poses_3d = []
+                        all_poses_vis_3d = []
 
+                        if os.path.exists(anno_file):
+                            with open(anno_file) as dfile:
+                                bodies = json.load(dfile)['bodies']
+                        
+                        for body in bodies:
+                            pose3d = np.array(body['joints19']).reshape((-1, 4))
+                            pose3d = pose3d[:15]
+                            joints_vis = pose3d[:, -1] > 0.1
+                            if not joints_vis[ROOTIDX]:
+                                continue
+
+                            all_poses_3d.append(pose3d[:, 0:3])
+                            all_poses_vis_3d.append(np.repeat(np.reshape(joints_vis, (-1, 1)), 3, axis=1))
+                        self.gt_list.append((all_poses_3d,all_poses_vis_3d))
+                np.save(gt_list_path,self.gt_list)
                         
     def __len__(self):
         if not self.eval_only:
@@ -121,6 +142,7 @@ class CustomDataset ( Dataset ):
     
     def get_pose3d(self,item):
         if not self.eval_only:
+            
             image_file = self.infos[0][item]
             # jialzhu/data/panoptic/160906_band4/hdPose3d_stage1_coco19/body3DScene_00009961.json
             # /home/tz/repo/mvpose/datasets/panoptic/160422_haggling1/hdPose3d_stage1_coco19/body3DScene_00000000.json
@@ -128,26 +150,25 @@ class CustomDataset ( Dataset ):
             folder_path = '/'.join(image_file.split('/')[:-3])
             frame_id = re.search(r'\d{8}', image_file).group()
             anno_file = f'{folder_path}/hdPose3d_stage1_coco19/body3DScene_{frame_id}.json'
+            bodies = []
+            all_poses_3d = []
+            all_poses_vis_3d = []
+
+            if os.path.exists(anno_file):
+                with open(anno_file) as dfile:
+                    bodies = json.load(dfile)['bodies']
+            
+            for body in bodies:
+                pose3d = np.array(body['joints19']).reshape((-1, 4))
+                pose3d = pose3d[:15]
+                joints_vis = pose3d[:, -1] > 0.1
+                if not joints_vis[ROOTIDX]:
+                    continue
+
+                all_poses_3d.append(pose3d[:, 0:3])
+                all_poses_vis_3d.append(np.repeat(np.reshape(joints_vis, (-1, 1)), 3, axis=1))
         else:
-            anno_file = self.anno_files[item]
-        
-        bodies = []
-        all_poses_3d = []
-        all_poses_vis_3d = []
-
-        if os.path.exists(anno_file):
-            with open(anno_file) as dfile:
-                bodies = json.load(dfile)['bodies']
-        
-        for body in bodies:
-            pose3d = np.array(body['joints19']).reshape((-1, 4))
-            pose3d = pose3d[:len(CMU_JOINTS_DEF)]
-            joints_vis = pose3d[:, -1] > 0.1
-            if not joints_vis[ROOTIDX]:
-                continue
-
-            all_poses_3d.append(pose3d[:, 0:3])
-            all_poses_vis_3d.append(np.repeat(np.reshape(joints_vis, (-1, 1)), 3, axis=1))
+            all_poses_3d, all_poses_vis_3d = self.gt_list[item]
             
         return all_poses_3d, all_poses_vis_3d
     
@@ -182,14 +203,23 @@ class CustomDataset ( Dataset ):
     def evaluate(self,preds):
         eval_list = []
         total_gt = 0
+        M = np.array([[1.0, 0.0, 0.0],
+            [0.0, 0.0, -1.0],
+            [0.0, 1.0, 0.0]])
         for i,pred in tqdm(enumerate(preds)):
             joints_3d, joints_3d_vis = self.get_pose3d(i)
-            if len(joints_3d) == 0:
+            if len(joints_3d) > 0:
+                joints_3d = [joints.dot(M) * 10 for joints in joints_3d] 
+            else:    
                 continue
-
-            pred = preds[i].copy()
+            if preds[i] == False:
+                pred = []
+                print(f'preds[{i}] is False')
+            else:    
+                pred = preds[i].copy()
             if len(pred) > 0 :
-                pred = [coco_to_cmu(pose.T) for pose in pred] 
+                pred = [coco_to_cmu(pose.T * 1000) for pose in pred] 
+                pass
             for pose in pred:
                 mpjpes = []
                 for (gt, gt_vis) in zip(joints_3d, joints_3d_vis):
